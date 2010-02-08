@@ -45,10 +45,19 @@ module Rask
   end
   
   
-  @@base_dir = '/tmp/rask'
+  @@base_dir  = '/tmp/rask'
+  @@threading = false
   
   def self.base_directory=(new_directory)
     @@base_dir = new_directory
+  end
+  
+  def self.enable_thread
+    @@threading = true
+  end
+  
+  def self.disable_thread
+    @@threading = false
   end
   
   def self.insert(task)
@@ -64,28 +73,31 @@ module Rask
   end
   
   
-  # create new task / or open existing task
-  def self.each(options = { :class=>nil, :group=>nil } )
+  def self.run(task_path)
+    f = File.open(task_path, 'r+')
+    f.flock(File::LOCK_EX)
+    
+    task = Marshal.restore(f)
+    yield task
+    
+    f.truncate(0)
+    f.pos = 0
+    Marshal.dump(task, f)
+    f.flock(File::LOCK_UN)
+    f.close
+    FileUtils.rm(task_path) if task.destroy?
+  end
+  
+  def self.each(options = { :class=>nil, :group=>nil }, &blk)
     threads = []
     tasks(options).each { |d|
-      threads << Thread::new(d) { |filepath|
-        f = File.open(filepath, 'r+')
-        f.flock(File::LOCK_EX)
-        
-        task = Marshal.restore(f)
-        yield task
-        
-        f.truncate(0)
-        f.pos = 0
-        Marshal.dump(task, f)
-        f.flock(File::LOCK_UN)
-        f.close
-        FileUtils.rm(filepath) if task.destroy?
-      }
+      if @@threading
+        threads << Thread::new(d) { |task_path| run(task_path, &blk) }
+      else
+        run(d, &blk)
+      end
     }
-    threads.each { |t|
-      t.join
-    }
+    threads.each { |t| t.join } if @@threading
   end
   
   def self.tasks(options = { :class=>nil, :group=>nil })
