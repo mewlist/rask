@@ -25,6 +25,69 @@ version 0.00
 
 
 
+= 使い方 =
+
+1. まず、ライブラリ読めるところに放り込んでください。
+
+2. Rask::Taskを継承してタスクを定義してください
+   Task はステートマシンとして振舞います。
+   ステートマシンを定義するために define_state を用います
+   
+[sample code]---------------------------------------------
+
+
+require 'rask'
+
+#
+# 数値のカウントアップ 100 までカウントする
+# タスクの定義
+#
+class CountupTask < Rask::Task
+  define_state :start,   :initial => true       # 初期状態
+  define_state :running                         # 実行
+  define_state :finish,  :from    => [:running] # 終了 (遷移元は:runningからのみ)
+  
+  def start
+    @count = 0
+    print "start\n"
+    transition_to_running # :running へ遷移
+  end
+  
+  def running
+    @count += 1
+    print "count #{@count} \n"
+    transition_to_finish if @count>=100 # :finish へ遷移
+  end
+  
+  def finish
+    print "finished\n"
+    destroy # タスクの破棄
+  end
+  
+end
+
+
+
+# タスクを動かす
+
+task = CountupTask.new # タスクの作成
+Rask.insert task       # タスクの登録
+
+while !Rask.tasks.empty?
+  # 登録されているタスクを実行
+  Rask.each { |task|
+    task.run
+  }
+end
+
+
+書き足し書き足ししていきます…
+
+
+
+[/sample code]---------------------------------------------
+
+
 
 = ライセンス =
 

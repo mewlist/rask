@@ -101,7 +101,8 @@ module Rask
   end
   
   def self.tasks(options = { :class=>nil, :group=>nil })
-    target = task_dir + '/'
+    target = task_dir
+    target += '/' if options[:class] || options[:group]
     target += "#{safe_class_name(options[:class])}" if options[:class]
     target += "-#{options[:group]}-" if options[:group]
     
