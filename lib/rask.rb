@@ -5,7 +5,7 @@
 require 'fileutils'
 require 'thread'
 
-require 'state_machine'
+require 'rask/state_machine'
 
 
 module Rask
