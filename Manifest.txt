@@ -4,6 +4,7 @@ PostInstall.txt
 README.rdoc
 Rakefile
 lib/rask.rb
+lib/rask/state_machine.rb
 script/console
 script/destroy
 script/generate

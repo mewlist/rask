@@ -5,7 +5,7 @@
 require 'fileutils'
 require 'thread'
 
-require 'rask/state_machine'
+require File.dirname(__FILE__) + '/rask/state_machine'
 
 
 module Rask
