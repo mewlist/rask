@@ -61,6 +61,8 @@
  require 'rubygems'
  require 'rask'
  
+ require 'countup.rb'
+ 
  # バックグラウンドタスクの実行
  Rask.daemon(:sleep=>0.1)
 
