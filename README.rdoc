@@ -20,6 +20,7 @@
 
 == SYNOPSIS:
 
+* タスクの定義 (countup.rb)
  require 'rubygems'
  require 'rask'
  #
@@ -33,45 +34,42 @@
    
    def start
      @count = 0
-     print "start\n"
+     p "start"
      transition_to_running # :running へ遷移
    end
    
    def running
-     print "count #{@count+=1} \n"
+     p "running count => #{@count+=1}"
      transition_to_finish if @count>=10 # :finish へ遷移
    end
    
    def finish
-     print "finished\n"
+     p "finished"
      destroy # タスクの破棄
    end
  end
  
  
- # タスクを動かす
- task = CountupTask.new # タスクの作成
- Rask.insert task       # タスクの登録
+  # タスクを動かす
+  if __FILE__ == $0
+    task = CountupTask.new # タスクの作成
+    Rask.insert task       # タスクの登録
+  end
  
- # 5回分タスクを実行
- 5.times {
-   Rask.each {|task| task.run }
- }
  
- #現在のタスクの状態を表示
- Rask.each {|task|
-   print "current state: #{task.state}\n"
- }
+* タスクを実行するデーモン(daemon.rb)
+ require 'rubygems'
+ require 'rask'
  
- # !ここで終了してもあとで復帰できる!
- 
- #タスクがすべて完了するまで実行
- while !Rask.tasks.empty?
-   Rask.each { |task|
-     task.run
-   }
- end
+ # バックグラウンドタスクの実行
+ Rask.daemon(:sleep=>0.1)
 
+
+デーモンを実行しておくと、Rask.insert を行うだけで
+タスクが自動的に実行されていきます。
+
+ $ ruby daemon.rb
+ $ ruby countup.rb
 
 == REQUIREMENTS:
 

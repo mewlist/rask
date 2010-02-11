@@ -115,23 +115,19 @@ module Rask
     task_list
   end
   
-  
   def self.task_dir
     @@base_dir
   end
   
-  
   def self.task_path(task_id)
     task_dir+"/#{task_id}.task"
   end
-  
   
   def self.initialize_storage
     unless File.exists? @@base_dir
       FileUtils.makedirs @@base_dir
     end
   end
-  
   
   def self.destroy(task)
     FileUtils.rm(task_path(task.task_id)) if File.exists? task_path(task.task_id)
@@ -140,6 +136,19 @@ module Rask
   def self.safe_class_name(c)
     c.gsub(/[:]/,'@')
   end
+  
+  def self.daemon(options = { :class=>nil, :group=>nil, :sleep=>1 })
+    exit if fork
+    Process.setsid
+    open(task_dir+"/Rask.pid","w"){|f| f.write Process.pid}
+    while true
+      Rask.each { |task|
+        task.run
+      }
+      sleep(options[:sleep])
+    end
+  end
+  
   
 end
 
