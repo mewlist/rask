@@ -15,8 +15,13 @@
  
 == FEATURES/PROBLEMS:
 
-* ステートマシンの記述 (Act As State Machine と似てる)
+* シンプルなステートマシンの記述 (Act As State Machine と似てる)
 * タスク状態の永続化
+* デーモン起動によるブロッキング回避
+  * たとえば、webなんかだとタイムアウト回避処理が容易に記述できる
+  * webビデオエンコーダとか、サイトの大量メール配信とか
+  * デーモンが落ちても永続化されているので処理の途中から復帰可能(いろいろ問題はありそうだけども)
+* 永続化はMarshal使っているだけなので drb 組み合わせて、強力な web のバックエンド構築ができる気がするが試していない
 
 == SYNOPSIS:
 
@@ -50,11 +55,11 @@
  end
  
  
-  # タスクを動かす
-  if __FILE__ == $0
-    task = CountupTask.new # タスクの作成
-    Rask.insert task       # タスクの登録
-  end
+ # タスクを動かす
+ if __FILE__ == $0
+   task = CountupTask.new # タスクの作成
+   Rask.insert task       # タスクの登録
+ end
  
  
 * タスクを実行するデーモン(daemon.rb)
@@ -67,10 +72,14 @@
  Rask.daemon(:sleep=>0.1)
 
 
+デーモンの起動
+
+ $ ruby daemon.rb
+
+
 デーモンを実行しておくと、Rask.insert を行うだけで
 タスクが自動的に実行されていきます。
 
- $ ruby daemon.rb
  $ ruby countup.rb
 
 == REQUIREMENTS:
