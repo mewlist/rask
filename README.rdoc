@@ -20,6 +20,7 @@
 
 == SYNOPSIS:
 
+ require 'rubygems'
  require 'rask'
  #
  # 数値のカウントアップ 10 までカウントする
@@ -66,7 +67,6 @@
  
  #タスクがすべて完了するまで実行
  while !Rask.tasks.empty?
-   Rask.tasks.to_s
    Rask.each { |task|
      task.run
    }
