@@ -79,8 +79,7 @@
 
 == INSTALL:
 
-適当にinclude できるパスを指定
-  PENDING
+ gem install rask
 
 == LICENSE:
 
