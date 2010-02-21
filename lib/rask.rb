@@ -45,9 +45,13 @@ module Rask
   end
   
   
-  @@base_dir  = '/tmp/rask'
-  @@threading = false
-  
+  @@base_dir     = '/tmp/rask'
+  @@threading    = false
+  @@thread_count = 5
+  @@queue        = Queue.new
+  @@processing   = []
+  @@locker       = Mutex::new
+ 
   def self.base_directory=(new_directory)
     @@base_dir = new_directory
   end
@@ -58,6 +62,14 @@ module Rask
   
   def self.disable_thread
     @@threading = false
+  end
+  
+  def self.thread_count=(count)
+    @@thread_count = count
+  end
+  
+  def self.task_path(task_id)
+    @@base_dir+"/#{task_id}.task"
   end
   
   def self.insert(task)
@@ -74,7 +86,7 @@ module Rask
   
   
   def self.run(task_path)
-    f = File.open(task_path, 'r+')
+    f = File.open(task_path, 'r+') rescue return
     f.flock(File::LOCK_EX)
     
     task = Marshal.restore(f)
@@ -101,26 +113,18 @@ module Rask
   end
   
   def self.tasks(options = { :class=>nil, :group=>nil })
-    target = task_dir
+    target = @@base_dir
     target += '/' if options[:class] || options[:group]
     target += "#{safe_class_name(options[:class])}" if options[:class]
     target += "-#{options[:group]}-" if options[:group]
     
     task_list = []
-    Dir.glob(task_dir+"/*.task") { |d|
+    Dir.glob(@@base_dir+"/*.task") { |d|
       if target.empty? || /#{target}/ =~ d
         task_list.push d
       end
     }
     task_list
-  end
-  
-  def self.task_dir
-    @@base_dir
-  end
-  
-  def self.task_path(task_id)
-    task_dir+"/#{task_id}.task"
   end
   
   def self.initialize_storage
@@ -136,23 +140,49 @@ module Rask
   def self.safe_class_name(c)
     c.gsub(/[:]/,'@')
   end
-  
-  def self.daemon(options = { :class=>nil, :group=>nil, :sleep=>1 })
+
+  def self.daemon(options = { :pname=>"Rask", :class=>nil, :group=>nil, :sleep=>0.1 })
+    print "daemon start\n"
     exit if fork
     Process.setsid
-    open(task_dir+"/Rask.pid","w"){|f| f.write Process.pid}
+    open(@@base_dir+"/#{options[:pname]}.pid","w"){|f| f.write Process.pid}
+    
+    # create worker threads
+    threads = []
+    for i in 1..@@thread_count do 
+      threads << Thread::new{
+        while true
+          d = nil
+          @@locker.synchronize do
+            d = @@queue.pop unless @@queue.empty?
+          end
+          if d != nil
+#            print "#{d}\n"
+            run(d) { |task| task.run }
+            @@locker.synchronize do
+              @@processing.delete(d)
+            end
+          else
+#            print "no data in queue\n"
+            sleep(options[:sleep])
+          end
+        end
+      }
+    end
+    
     while true
-      Rask.each { |task|
-        task.run
+      task_list = Rask.tasks(options)
+      task_list.each { |d|
+        @@locker.synchronize do
+          unless @@processing.include?(d)
+            @@queue.push d
+            @@processing.push d
+          end
+        end
       }
       sleep(options[:sleep])
     end
   end
   
-  
-end
-
-
-
-
+end  
 
