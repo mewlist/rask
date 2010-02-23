@@ -145,6 +145,10 @@ module Rask
     print "daemon start\n"
     exit if fork
     Process.setsid
+    if File.exist? @@base_dir+"/#{options[:pname]}.pid"
+      print "already running Rask process #{optiona[:pname]}"
+      return
+    end
     open(@@base_dir+"/#{options[:pname]}.pid","w"){|f| f.write Process.pid}
     
     # create worker threads
