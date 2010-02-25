@@ -153,9 +153,12 @@ module Rask
     
     # create worker threads
     threads = []
+    thread_length = 0
+    terminated = false
     for i in 1..@@thread_count do 
       threads << Thread::new{
-        while true
+        thread_length += 1
+        while !terminated
           d = nil
           @@locker.synchronize do
             d = @@queue.pop unless @@queue.empty?
@@ -171,8 +174,21 @@ module Rask
             sleep(options[:sleep])
           end
         end
+        print "."
+        thread_length -= 1
       }
     end
+    
+    Signal.trap(:TERM) {
+      print "daemon terminated"
+      terminated = true
+      while thread_length > 0
+        sleep(0.1)
+      end
+      FileUtils.rm(@@base_dir+"/#{options[:pname]}.pid") if File.exist?(@@base_dir+"/#{options[:pname]}.pid")
+      print "done \n"
+      exit
+    }
     
     while true
       task_list = Rask.tasks(options)
