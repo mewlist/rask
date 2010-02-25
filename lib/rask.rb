@@ -45,12 +45,14 @@ module Rask
   end
   
   
-  @@base_dir     = '/tmp/rask'
-  @@threading    = false
-  @@thread_count = 5
-  @@queue        = Queue.new
-  @@processing   = []
-  @@locker       = Mutex::new
+  @@base_dir         = '/tmp/rask'
+  @@threading        = false
+  @@thread_max_count = 5
+  @@thread_count     = 0
+  @@terminated       = false
+  @@queue            = Queue.new
+  @@processing       = []
+  @@locker           = Mutex::new
  
   def self.base_directory=(new_directory)
     @@base_dir = new_directory
@@ -64,12 +66,20 @@ module Rask
     @@threading = false
   end
   
-  def self.thread_count=(count)
-    @@thread_count = count
+  def self.thread_max_count=(count)
+    @@thread_max_count = count
   end
   
   def self.task_path(task_id)
     @@base_dir+"/#{task_id}.task"
+  end
+  
+  def self.task_path(task_id)
+    @@base_dir+"/#{task_id}.task"
+  end
+  
+  def self.pid_path
+    @@base_dir+"/#{File.basename($0)}.pid"
   end
   
   def self.insert(task)
@@ -141,24 +151,22 @@ module Rask
     c.gsub(/[:]/,'@')
   end
 
-  def self.daemon(options = { :pname=>"Rask", :class=>nil, :group=>nil, :sleep=>0.1 })
+  def self.daemon(options = { :class=>nil, :group=>nil, :sleep=>0.1 })
     print "daemon start\n"
     exit if fork
     Process.setsid
-    if File.exist? @@base_dir+"/#{options[:pname]}.pid"
-      print "already running Rask process #{options[:pname]}"
+    if File.exist? pid_path
+      print "already running rask process. #{File.basename($0)}"
       return
     end
-    open(@@base_dir+"/#{options[:pname]}.pid","w"){|f| f.write Process.pid}
+    open(pid_path,"w"){|f| f.write Process.pid}
     
     # create worker threads
     threads = []
-    thread_length = 0
-    terminated = false
-    for i in 1..@@thread_count do 
-      threads << Thread::new{
-        thread_length += 1
-        while !terminated
+    for i in 1..@@thread_max_count do 
+      threads << Thread::new(i) { |thread_id|
+        @@thread_count += 1
+        while !@@terminated
           d = nil
           @@locker.synchronize do
             d = @@queue.pop unless @@queue.empty?
@@ -174,21 +182,12 @@ module Rask
             sleep(options[:sleep])
           end
         end
-        print "."
-        thread_length -= 1
+        print "#{thread_id}"
+        @@thread_count -= 1
       }
     end
     
-    Signal.trap(:TERM) {
-      print "daemon terminated"
-      terminated = true
-      while thread_length > 0
-        sleep(0.1)
-      end
-      FileUtils.rm(@@base_dir+"/#{options[:pname]}.pid") if File.exist?(@@base_dir+"/#{options[:pname]}.pid")
-      print "done \n"
-      exit
-    }
+    Signal.trap(:TERM) {safe_exit}
     
     while true
       task_list = Rask.tasks(options)
@@ -204,5 +203,16 @@ module Rask
     end
   end
   
-end  
+  def self.safe_exit
+    print "daemon terminated"
+    @@terminated = true
+    while @@thread_count > 0
+      sleep(0.1)
+    end
+    FileUtils.rm(pid_path) if File.exist?(pid_path)
+    print "done \n"
+    exit
+  end
+  
+end
 
