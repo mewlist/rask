@@ -25,19 +25,18 @@
 
 == SYNOPSIS:
 
-* タスクの定義 (countup.rb)
+* タスクの定義と実行 (samples/test.rb)
  require 'rubygems'
  require 'rask'
- #
- # 数値のカウントアップ 10 までカウントする
- # タスクの定義
- #
+ 
+ # 数値のカウントアップ 10 までカウントするタスク
  class CountupTask < Rask::Task
+   # define_state でステートマシンを作ることができます
    define_state :start,   :initial => true       # 初期状態
    define_state :running                         # 実行
    define_state :finish,  :from    => [:running] # 終了 (遷移元は:runningからのみ)
    
-   def start
+   def start # 定義と同名の関数を定義することで自動的にコールバックされます
      @count = 0
      p "start"
      transition_to_running # :running へ遷移
@@ -50,37 +49,30 @@
    
    def finish
      p "finished"
-     destroy # タスクの破棄
+     destroy # タスクの破棄をする
    end
  end
  
+ task = CountupTask.new # タスクの作成
+ Rask.insert task       # タスクの登録
  
- # タスクを動かす
- if __FILE__ == $0
-   task = CountupTask.new # タスクの作成
-   Rask.insert task       # タスクの登録
- end
- 
- 
-* タスクを実行するデーモン(daemon.rb)
- require 'rubygems'
- require 'rask'
- 
- require 'countup.rb'
- 
- # バックグラウンドタスクの実行
- Rask.daemon(:sleep=>0.1)
+ Rask.daemon # デーモンとして実行
 
+タスク定義と、デーモンの実行コードがそろったら以下のようにデーモンを起動
 
-デーモンの起動
+ $ ruby samples/test.rb
 
- $ ruby daemon.rb
+test.rb を実行するたびにタスクが新しく登録され実行する様子がわかる
+Raskはデーモンの二重起動を抑制するので複数のプロセスが立ち上がることはない
 
+デーモンが起動すると、プロセスIDファイルが rask の作業ディレクトリに自動的に生成されるので
+デーモンの終了は以下のようにできる
 
-デーモンを実行しておくと、Rask.insert を行うだけで
-タスクが自動的に実行されていきます。
+ $ kill `cat /tmp/rask/test.rb.pid`
 
- $ ruby countup.rb
+kill -TERM されたプロセスは、そのタスクのステートマシンの状態を壊さない。
+いつでも、test.rb を再実行することで前回中断したところから続きのタスクを実行することができる。
+シビアな運用環境で役立つはず。
 
 == REQUIREMENTS:
 
