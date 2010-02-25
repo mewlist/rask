@@ -146,7 +146,7 @@ module Rask
     exit if fork
     Process.setsid
     if File.exist? @@base_dir+"/#{options[:pname]}.pid"
-      print "already running Rask process #{optiona[:pname]}"
+      print "already running Rask process #{options[:pname]}"
       return
     end
     open(@@base_dir+"/#{options[:pname]}.pid","w"){|f| f.write Process.pid}
