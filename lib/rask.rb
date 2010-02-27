@@ -33,6 +33,7 @@ module Rask
     include StateMachine
     attr_accessor :task_id
     attr_accessor :group
+    attr_reader   :state
     
     #
     #====If group option is given, the task is classified by group name.
@@ -40,7 +41,7 @@ module Rask
     #==== _group
     # group name to classify
     def initialize(_group=nil)
-      group = _group
+      self.group = _group
       super()
     end
     
@@ -124,8 +125,8 @@ module Rask
   
   
   #
-  def self.run(task_path)
-    f = File.open(task_path, 'r+') rescue return
+  def self.run(task_id)
+    f = File.open(task_path(task_id), 'r+') rescue return
     f.flock(File::LOCK_EX)
     
     task = Marshal.restore(f)
@@ -136,24 +137,39 @@ module Rask
     Marshal.dump(task, f)
     f.flock(File::LOCK_UN)
     f.close
-    FileUtils.rm(task_path) if task.destroy?
+    FileUtils.rm(task_path(task_id)) if task.destroy?
   end
   
+  #
+  def self.read(task_id)
+    f = File.open(task_path(task_id), 'r+') rescue return
+    f.flock(File::LOCK_EX)
+    task = Marshal.restore(f)
+    f.flock(File::LOCK_UN)
+    f.close
+    task
+  end
+  
+  #
   #====Get all file path of task list
   #
-  def self.tasks(options = { :class=>nil, :group=>nil })
+  def self.task_ids(options = { :class=>nil, :group=>nil })
     target = @@base_dir
-    target += '/' if options[:class] || options[:group]
-    target += "#{safe_class_name(options[:class])}" if options[:class]
+    target += '/'
+    if options[:class]
+      target += "#{safe_class_name(options[:class])}"
+    else
+      target += "[^-]+"
+    end
     target += "-#{options[:group]}-" if options[:group]
     
-    task_list = []
+    task_id_list = []
     Dir.glob(@@base_dir+"/*.task") { |d|
       if target.empty? || /#{target}/ =~ d
-        task_list.push d
+        task_id_list.push File.basename(d, ".*")
       end
     }
-    task_list
+    task_id_list
   end
   
   #
@@ -180,7 +196,8 @@ module Rask
   #It is possible to specify the the task group.
   # Rask.daemon(:group=>'TaskGroup')
   #
-  def self.daemon(options = { :class=>nil, :group=>nil, :sleep=>0.1 })
+  def self.daemon(options = {})
+    options = { :sleep=>0.1 }.merge(options)
     print "daemon start\n"
     exit if fork
     Process.setsid
@@ -219,7 +236,7 @@ module Rask
     Signal.trap(:TERM) {safe_exit}
     
     while true
-      task_list = Rask.tasks(options)
+      task_list = Rask.task_ids(options)
       task_list.each { |d|
         @@locker.synchronize do
           unless @@processing.include?(d)

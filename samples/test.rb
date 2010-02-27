@@ -25,7 +25,7 @@ class CountupTask < Rask::Task
   end
 end
 
-task = CountupTask.new # タスクの作成
-Rask.insert task       # タスクの登録
+Rask.insert CountupTask.new # タスクの登録
 
 Rask.daemon # デーモンとして実行
+
