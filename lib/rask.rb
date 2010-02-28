@@ -136,6 +136,7 @@ module Rask
   @@queue            = Queue.new
   @@processing       = []
   @@locker           = Mutex::new
+  @@process_name     = nil
   
   #
   # === Set base storage directory
@@ -154,13 +155,22 @@ module Rask
   end
   
   #
+  # === Set process name manually
+  # default :: $0
+  #
+  def self.process_name=(name)
+    @@process_name = name
+  end
+  
+  #
   def self.task_path(task_id)
     @@base_dir+"/#{task_id}.task"
   end
   
   #
   def self.pid_path
-    @@base_dir+"/#{File.basename($0)}.pid"
+    return @@base_dir+"/#{File.basename($0)}.pid" if @@process_name
+    @@base_dir+"/#{@@process_name}.pid"
   end
   
   #
