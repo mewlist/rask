@@ -169,7 +169,7 @@ module Rask
   
   #
   def self.pid_path
-    return @@base_dir+"/#{File.basename($0)}.pid" if @@process_name
+    return @@base_dir+"/#{File.basename($0)}.pid" if @@process_name==nil
     @@base_dir+"/#{@@process_name}.pid"
   end
   
