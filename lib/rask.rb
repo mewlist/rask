@@ -16,51 +16,71 @@ require File.dirname(__FILE__) + '/rask/state_machine'
 module Rask
   
   #
-  #===Task base class
-  #To define new Task you must inherit this base-class
-  #* sample code
-  # class NewTask < Rask::Task
-  #   define_state :initial, :initial => true
-  #   define_state :finish
-  #   def initial
-  #     transition :finish
-  #   end
-  #   def finish
-  #     destroy
-  #   end
-  # end
+  # ==Task base class
+  # To define new Task you must inherit this base-class
+  # * Transition function is defined automatically, named transition_to_[state]
+  # * For this sample, transition_to_finish is defined.
+  # ====sample code
+  #    class NewTask < Rask::Task
+  #      define_state :initial, :initial => true
+  #      define_state :finish
+  #      def initial
+  #        transition_to_finish
+  #      end
+  #      def finish
+  #        destroy
+  #      end
+  #    end
+  # 
   class Task
     include StateMachine
+    #
     attr_accessor :task_id
+    #
     attr_accessor :group
+    #
     attr_reader   :state
     
     #
-    #====If group option is given, the task is classified by group name.
+    # [_group]
+    #   group name to classify.
+    #   You can filter task group when call <b>Rask::task_ids / Rask::daemon</b> methods.
+    # === If group option is given, the task is classified by group name.
+    # ==== sample code
+    #  Rask::insert NewTask.new('group_name')
+    #  Rask::daemon(:group => 'group_name')
     #
-    #==== _group
-    # group name to classify
     def initialize(_group=nil)
       self.group = _group
       super()
     end
     
     #
-    #====automatically callbacked from task engine.
+    # === automatically callbacked from task engine.
     #
     def run
+      return if read_only?
       if @state
         eval @state.to_s
       end
     end
     
     #
-    #====Transition to new state. In the state function.
+    # === Transition to new state. In the state function.
     # Usually you should call generated transition_to_[state name] function
     def transition(to)
       @state = to
     end
     
+    #
+    def read_only
+      @read_only = true
+    end
+    
+    #
+    def read_only?
+      @read_only == true
+    end
     
     #
     def destroy
@@ -84,15 +104,16 @@ module Rask
   @@locker           = Mutex::new
   
   #
-  #====Set base storage directory
-  #default is '/tmp/rask'
+  # === Set base storage directory
+  # default :: /tmp/rask
   #
   def self.base_directory=(new_directory)
     @@base_dir = new_directory
   end
   
   #
-  #====Set max count of worker thread
+  # === Set max count of worker thread
+  # default :: 5
   #
   def self.thread_max_count=(count)
     @@thread_max_count = count
@@ -109,8 +130,10 @@ module Rask
   end
   
   #
-  #====Insert new task 
-  # Rask::insert NewTask.new
+  # === Insert a new task. The task will be controlled under Rask daemon process.
+  # ==== sample code
+  #  Rask::insert NewTask.new
+  #
   def self.insert(task)
     initialize_storage
     task_id = "#{safe_class_name(task.class.name)}-#{task.group.to_s}-#{Time.now.to_i}-#{Time.now.usec}"
@@ -128,10 +151,8 @@ module Rask
   def self.run(task_id)
     f = File.open(task_path(task_id), 'r+') rescue return
     f.flock(File::LOCK_EX)
-    
     task = Marshal.restore(f)
-    yield task
-    
+    task.run
     f.truncate(0)
     f.pos = 0
     Marshal.dump(task, f)
@@ -141,17 +162,29 @@ module Rask
   end
   
   #
+  def self.run_all(options = { :class=>nil, :group=>nil })
+    Rask.task_ids(options).each { |task_id| run(task_id) }
+  end
+  
+  #
+  # === Get the task instance to observe.
+  # You can use the instance for only the purpose of observation.
+  #
   def self.read(task_id)
     f = File.open(task_path(task_id), 'r+') rescue return
     f.flock(File::LOCK_EX)
     task = Marshal.restore(f)
     f.flock(File::LOCK_UN)
     f.close
+    task.read_only = true
     task
   end
   
   #
-  #====Get all file path of task list
+  # === Get task_id list.
+  # [options]
+  #   class :: Only the instance of specified class. 
+  #   group :: Only the instance of specified group. see also Task::initialize
   #
   def self.task_ids(options = { :class=>nil, :group=>nil })
     target = @@base_dir
@@ -173,28 +206,18 @@ module Rask
   end
   
   #
-  def self.initialize_storage
-    unless File.exists? @@base_dir
-      FileUtils.makedirs @@base_dir
-    end
-  end
-  
-  #
-  #====force destroy the task
+  # === force destroy the task
   #
   def self.destroy(task)
     FileUtils.rm(task_path(task.task_id)) if File.exists? task_path(task.task_id)
   end
   
   #
-  def self.safe_class_name(c)
-    c.gsub(/[:]/,'@')
-  end
-  
-  #
-  #====Start daemon process
-  #It is possible to specify the the task group.
-  # Rask.daemon(:group=>'TaskGroup')
+  # === Start a daemon process
+  # [options]
+  #   class :: Only the instance of specified class. 
+  #   group :: Only the instance of specified group. see also Task::initialize.
+  #   sleep :: Polling interval daemon process.
   #
   def self.daemon(options = {})
     options = { :sleep=>0.1 }.merge(options)
@@ -219,7 +242,7 @@ module Rask
           end
           if d != nil
 #            print "#{d}\n"
-            run(d) { |task| task.run }
+            run(d)
             @@locker.synchronize do
               @@processing.delete(d)
             end
@@ -247,6 +270,20 @@ module Rask
       }
       sleep(options[:sleep])
     end
+  end
+  
+private
+  
+  #
+  def self.initialize_storage
+    unless File.exists? @@base_dir
+      FileUtils.makedirs @@base_dir
+    end
+  end
+  
+  #
+  def self.safe_class_name(c)
+    c.gsub(/[:]/,'@')
   end
   
   #
