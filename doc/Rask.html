@@ -144,6 +144,39 @@
 </td></tr>
 </table>
 <h2><a href="Rask.html">Rask</a> is terminatable task engine</h2>
+<h4>sample code</h4>
+<pre>
+ require 'rubygems'
+ require 'rask'
+
+ # task of count up to 10
+ class CountupTask &lt; Rask::Task
+   # define statemachine states
+   define_state :start,   :initial =&gt; true       # initial state
+   define_state :running                         # run
+   define_state :finish,  :from    =&gt; [:running] # finish (only from :running)
+
+   def start # same name as state definition(define_state)
+     @count = 0
+     p &quot;start&quot;
+     transition_to_running # transition to :running
+   end
+
+   def running
+     p &quot;running count =&gt; #{@count+=1}&quot;
+     transition_to_finish if @count&gt;=10 # transition to :finish
+   end
+
+   def finish
+     p &quot;finished&quot;
+     destroy # destroy task myself
+   end
+ end
+
+ Rask.insert CountupTask.new # insert the task
+
+ Rask.daemon # run as a daemon
+</pre>
 
 		</div>
 
@@ -184,7 +217,7 @@
 					<div class="method-source-code"
 						id="base-directory--source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 110</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 144</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">base_directory=</span>(<span class="ruby-identifier">new_directory</span>)
     <span class="ruby-ivar">@@base_dir</span> = <span class="ruby-identifier">new_directory</span>
   <span class="ruby-keyword kw">end</span></pre>
@@ -202,7 +235,7 @@
 				<div class="method-heading">
 				
 					<span class="method-name">daemon</span><span
-						class="method-args">(options = {})</span>
+						class="method-args">(options = {:class=>nil, :group=>nil, :sleep=>0.1})</span>
 					<span class="method-click-advice">click to toggle source</span>
 				
 				</div>
@@ -229,8 +262,8 @@
 					<div class="method-source-code"
 						id="daemon-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 224</span>
-  <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">daemon</span>(<span class="ruby-identifier">options</span> = {})
+<span class="ruby-comment cmt"># File lib/rask.rb, line 260</span>
+  <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">daemon</span>(<span class="ruby-identifier">options</span> = {<span class="ruby-identifier">:class</span>=<span class="ruby-operator">&gt;</span><span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">:group=</span><span class="ruby-operator">&gt;</span><span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">:sleep=</span><span class="ruby-operator">&gt;</span><span class="ruby-value">0</span><span class="ruby-value">.1</span>})
     <span class="ruby-identifier">options</span> = { <span class="ruby-identifier">:sleep=</span><span class="ruby-operator">&gt;</span><span class="ruby-value">0</span><span class="ruby-value">.1</span> }.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">options</span>)
     <span class="ruby-identifier">print</span> <span class="ruby-value str">&quot;daemon start\n&quot;</span>
     <span class="ruby-identifier">exit</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">fork</span>
@@ -310,7 +343,7 @@
 					<div class="method-source-code"
 						id="destroy-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 213</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 249</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">destroy</span>(<span class="ruby-identifier">task</span>)
     <span class="ruby-constant">FileUtils</span>.<span class="ruby-identifier">rm</span>(<span class="ruby-identifier">task_path</span>(<span class="ruby-identifier">task</span>.<span class="ruby-identifier">task_id</span>)) <span class="ruby-keyword kw">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exists?</span> <span class="ruby-identifier">task_path</span>(<span class="ruby-identifier">task</span>.<span class="ruby-identifier">task_id</span>)
   <span class="ruby-keyword kw">end</span></pre>
@@ -346,7 +379,7 @@
 					<div class="method-source-code"
 						id="insert-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 137</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 171</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">insert</span>(<span class="ruby-identifier">task</span>)
     <span class="ruby-identifier">initialize_storage</span>
     <span class="ruby-identifier">task_id</span> = <span class="ruby-node">&quot;#{safe_class_name(task.class.name)}-#{task.group.to_s}-#{Time.now.to_i}-#{Time.now.usec}&quot;</span>
@@ -386,7 +419,7 @@
 					<div class="method-source-code"
 						id="pid-path-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 128</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 162</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">pid_path</span>
     <span class="ruby-ivar">@@base_dir</span><span class="ruby-operator">+</span><span class="ruby-node">&quot;/#{File.basename($0)}.pid&quot;</span>
   <span class="ruby-keyword kw">end</span></pre>
@@ -421,7 +454,7 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="read-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 175</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 211</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">read</span>(<span class="ruby-identifier">task_id</span>)
     <span class="ruby-identifier">f</span> = <span class="ruby-constant">File</span>.<span class="ruby-identifier">open</span>(<span class="ruby-identifier">task_path</span>(<span class="ruby-identifier">task_id</span>), <span class="ruby-value str">'r+'</span>) <span class="ruby-keyword kw">rescue</span> <span class="ruby-keyword kw">return</span>
     <span class="ruby-identifier">f</span>.<span class="ruby-identifier">flock</span>(<span class="ruby-constant">File</span><span class="ruby-operator">::</span><span class="ruby-constant">LOCK_EX</span>)
@@ -459,14 +492,16 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="run-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 151</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 185</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">run</span>(<span class="ruby-identifier">task_id</span>)
     <span class="ruby-identifier">f</span> = <span class="ruby-constant">File</span>.<span class="ruby-identifier">open</span>(<span class="ruby-identifier">task_path</span>(<span class="ruby-identifier">task_id</span>), <span class="ruby-value str">'r+'</span>) <span class="ruby-keyword kw">rescue</span> <span class="ruby-keyword kw">return</span>
     <span class="ruby-identifier">f</span>.<span class="ruby-identifier">flock</span>(<span class="ruby-constant">File</span><span class="ruby-operator">::</span><span class="ruby-constant">LOCK_EX</span>)
-    
     <span class="ruby-identifier">task</span> = <span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">restore</span>(<span class="ruby-identifier">f</span>)
-    <span class="ruby-identifier">task</span>.<span class="ruby-identifier">run</span>
-    
+    <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">block_given?</span>
+      <span class="ruby-keyword kw">yield</span> <span class="ruby-identifier">task</span>
+    <span class="ruby-keyword kw">else</span>
+      <span class="ruby-identifier">task</span>.<span class="ruby-identifier">run</span>
+    <span class="ruby-keyword kw">end</span>
     <span class="ruby-identifier">f</span>.<span class="ruby-identifier">truncate</span>(<span class="ruby-value">0</span>)
     <span class="ruby-identifier">f</span>.<span class="ruby-identifier">pos</span> = <span class="ruby-value">0</span>
     <span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">dump</span>(<span class="ruby-identifier">task</span>, <span class="ruby-identifier">f</span>)
@@ -502,7 +537,7 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="run-all-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 167</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 203</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">run_all</span>(<span class="ruby-identifier">options</span> = { <span class="ruby-identifier">:class</span>=<span class="ruby-operator">&gt;</span><span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">:group=</span><span class="ruby-operator">&gt;</span><span class="ruby-keyword kw">nil</span> })
     <span class="ruby-constant">Rask</span>.<span class="ruby-identifier">task_ids</span>(<span class="ruby-identifier">options</span>).<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">task_id</span><span class="ruby-operator">|</span> <span class="ruby-identifier">run</span>(<span class="ruby-identifier">task_id</span>) }
   <span class="ruby-keyword kw">end</span></pre>
@@ -544,7 +579,7 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="task-ids-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 191</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 227</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">task_ids</span>(<span class="ruby-identifier">options</span> = { <span class="ruby-identifier">:class</span>=<span class="ruby-operator">&gt;</span><span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">:group=</span><span class="ruby-operator">&gt;</span><span class="ruby-keyword kw">nil</span> })
     <span class="ruby-identifier">target</span> = <span class="ruby-ivar">@@base_dir</span>
     <span class="ruby-identifier">target</span> <span class="ruby-operator">+=</span> <span class="ruby-value str">'/'</span>
@@ -591,7 +626,7 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="task-path-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 123</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 157</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">task_path</span>(<span class="ruby-identifier">task_id</span>)
     <span class="ruby-ivar">@@base_dir</span><span class="ruby-operator">+</span><span class="ruby-node">&quot;/#{task_id}.task&quot;</span>
   <span class="ruby-keyword kw">end</span></pre>
@@ -628,7 +663,7 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="thread-max-count--source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 118</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 152</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">thread_max_count=</span>(<span class="ruby-identifier">count</span>)
     <span class="ruby-ivar">@@thread_max_count</span> = <span class="ruby-identifier">count</span>
   <span class="ruby-keyword kw">end</span></pre>
@@ -666,7 +701,7 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="initialize-storage-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 280</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 316</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">initialize_storage</span>
     <span class="ruby-keyword kw">unless</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exists?</span> <span class="ruby-ivar">@@base_dir</span>
       <span class="ruby-constant">FileUtils</span>.<span class="ruby-identifier">makedirs</span> <span class="ruby-ivar">@@base_dir</span>
@@ -700,7 +735,7 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="safe-class-name-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 287</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 323</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">safe_class_name</span>(<span class="ruby-identifier">c</span>)
     <span class="ruby-identifier">c</span>.<span class="ruby-identifier">gsub</span>(<span class="ruby-regexp re">/[:]/</span>,<span class="ruby-value str">'@'</span>)
   <span class="ruby-keyword kw">end</span></pre>
@@ -732,15 +767,14 @@ You can use the instance for only the purpose of observation.
 					<div class="method-source-code"
 						id="safe-exit-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 292</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 328</span>
   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">safe_exit</span>
-    <span class="ruby-identifier">print</span> <span class="ruby-value str">&quot;daemon terminated&quot;</span>
     <span class="ruby-ivar">@@terminated</span> = <span class="ruby-keyword kw">true</span>
     <span class="ruby-keyword kw">while</span> <span class="ruby-ivar">@@thread_count</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span>
       <span class="ruby-identifier">sleep</span>(<span class="ruby-value">0</span><span class="ruby-value">.1</span>)
     <span class="ruby-keyword kw">end</span>
     <span class="ruby-constant">FileUtils</span>.<span class="ruby-identifier">rm</span>(<span class="ruby-identifier">pid_path</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exist?</span>(<span class="ruby-identifier">pid_path</span>)
-    <span class="ruby-identifier">print</span> <span class="ruby-value str">&quot;done \n&quot;</span>
+    <span class="ruby-identifier">print</span> <span class="ruby-value str">&quot;safely daemon terminated. \n&quot;</span>
     <span class="ruby-identifier">exit</span>
   <span class="ruby-keyword kw">end</span></pre>
 					</div>

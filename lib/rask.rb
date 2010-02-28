@@ -7,14 +7,48 @@ require 'thread'
 
 require File.dirname(__FILE__) + '/rask/state_machine'
 
-#Authors::   mewlist / Hidenori Doi
-#Copyright:: Copyright (C) 2010 mewlist / Hidenori Doi
-#License::   The MIT License
+# Authors::   mewlist / Hidenori Doi
+# Copyright:: Copyright (C) 2010 mewlist / Hidenori Doi
+# License::   The MIT License
+# 
+# == Rask is terminatable task engine
+# ==== sample code
+#  require 'rubygems'
+#  require 'rask'
 #
-#== Rask is terminatable task engine
+#  # task of count up to 10
+#  class CountupTask < Rask::Task
+#    # define statemachine states
+#    define_state :start,   :initial => true       # initial state
+#    define_state :running                         # run
+#    define_state :finish,  :from    => [:running] # finish (only from :running)
+#    
+#    def start # same name as state definition(define_state)
+#      @count = 0
+#      p "start"
+#      transition_to_running # transition to :running
+#    end
+#    
+#    def running
+#      p "running count => #{@count+=1}"
+#      transition_to_finish if @count>=10 # transition to :finish
+#    end
+#    
+#    def finish
+#      p "finished"
+#      destroy # destroy task myself
+#    end
+#  end
+#
+#  Rask.insert CountupTask.new # insert the task
+#
+#  Rask.daemon # run as a daemon
 #
 module Rask
   
+  # Authors::   mewlist / Hidenori Doi
+  # Copyright:: Copyright (C) 2010 mewlist / Hidenori Doi
+  # License::   The MIT License
   #
   # ==Task base class
   # To define new Task you must inherit this base-class
@@ -152,7 +186,11 @@ module Rask
     f = File.open(task_path(task_id), 'r+') rescue return
     f.flock(File::LOCK_EX)
     task = Marshal.restore(f)
-    task.run
+    if block_given?
+      yield task
+    else
+      task.run
+    end
     f.truncate(0)
     f.pos = 0
     Marshal.dump(task, f)
@@ -219,7 +257,7 @@ module Rask
   #   group :: Only the instance of specified group. see also Task::initialize.
   #   sleep :: Polling interval daemon process.
   #
-  def self.daemon(options = {})
+  def self.daemon(options = {:class=>nil, :group=>nil, :sleep=>0.1})
     options = { :sleep=>0.1 }.merge(options)
     print "daemon start\n"
     exit if fork
@@ -288,13 +326,12 @@ private
   
   #
   def self.safe_exit
-    print "daemon terminated"
     @@terminated = true
     while @@thread_count > 0
       sleep(0.1)
     end
     FileUtils.rm(pid_path) if File.exist?(pid_path)
-    print "done \n"
+    print "safely daemon terminated. \n"
     exit
   end
   

@@ -127,7 +127,18 @@
 		<h1 class="class">Rask::Task</h1>
 
 		<div id="description">
-			<h2><a href="Task.html">Task</a> base class</h2>
+			<table>
+<tr><td valign="top">Authors:</td><td>mewlist / Hidenori Doi
+
+</td></tr>
+<tr><td valign="top">Copyright:</td><td>Copyright (C) 2010 mewlist / Hidenori Doi
+
+</td></tr>
+<tr><td valign="top">License:</td><td>The MIT License
+
+</td></tr>
+</table>
+<h2><a href="Task.html">Task</a> base class</h2>
 <p>
 To define new <a href="Task.html">Task</a> you must inherit this base-class
 </p>
@@ -253,7 +264,7 @@ To define new <a href="Task.html">Task</a> you must inherit this base-class
 					<div class="method-source-code"
 						id="new-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 53</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 87</span>
     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">_group</span>=<span class="ruby-keyword kw">nil</span>)
       <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">group</span> = <span class="ruby-identifier">_group</span>
       <span class="ruby-keyword kw">super</span>()
@@ -292,7 +303,7 @@ To define new <a href="Task.html">Task</a> you must inherit this base-class
 					<div class="method-source-code"
 						id="destroy-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 86</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 120</span>
     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">destroy</span>
       <span class="ruby-identifier">transition</span> <span class="ruby-keyword kw">nil</span>
     <span class="ruby-keyword kw">end</span></pre>
@@ -324,7 +335,7 @@ To define new <a href="Task.html">Task</a> you must inherit this base-class
 					<div class="method-source-code"
 						id="destroy--source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 91</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 125</span>
     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">destroy?</span>
       <span class="ruby-ivar">@state</span> <span class="ruby-operator">==</span> <span class="ruby-keyword kw">nil</span>
     <span class="ruby-keyword kw">end</span></pre>
@@ -356,7 +367,7 @@ To define new <a href="Task.html">Task</a> you must inherit this base-class
 					<div class="method-source-code"
 						id="read-only-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 76</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 110</span>
     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_only</span>
       <span class="ruby-ivar">@read_only</span> = <span class="ruby-keyword kw">true</span>
     <span class="ruby-keyword kw">end</span></pre>
@@ -388,7 +399,7 @@ To define new <a href="Task.html">Task</a> you must inherit this base-class
 					<div class="method-source-code"
 						id="read-only--source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 81</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 115</span>
     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_only?</span>
       <span class="ruby-ivar">@read_only</span> <span class="ruby-operator">==</span> <span class="ruby-keyword kw">true</span>
     <span class="ruby-keyword kw">end</span></pre>
@@ -420,7 +431,7 @@ To define new <a href="Task.html">Task</a> you must inherit this base-class
 					<div class="method-source-code"
 						id="run-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 61</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 95</span>
     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">run</span>
       <span class="ruby-keyword kw">return</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">read_only?</span>
       <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@state</span>
@@ -458,7 +469,7 @@ Usually you should call generated transition_to_[state name] function
 					<div class="method-source-code"
 						id="transition-source">
 <pre>
-<span class="ruby-comment cmt"># File lib/rask.rb, line 71</span>
+<span class="ruby-comment cmt"># File lib/rask.rb, line 105</span>
     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">transition</span>(<span class="ruby-identifier">to</span>)
       <span class="ruby-ivar">@state</span> = <span class="ruby-identifier">to</span>
     <span class="ruby-keyword kw">end</span></pre>
