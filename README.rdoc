@@ -2,6 +2,9 @@
 
 * http://github.com/mewlist/Rask
 
+= English Document
+* http://mewlist.com/softwares/rask/doc/index.html
+
 == DESCRIPTION:
  
  Rask を使うと、タスク処理をシンプルに記述できます。
