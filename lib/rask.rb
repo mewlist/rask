@@ -272,6 +272,8 @@ module Rask
     print "daemon start\n"
     exit if fork
     Process.setsid
+    
+    initialize_storage
     if File.exist? pid_path
       print "already running rask process. #{File.basename($0)}"
       return
