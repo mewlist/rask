@@ -31,6 +31,40 @@
 * タスクのグルーピング
   * ユーザー毎にタスクを分けて管理したりとか、ブラウザゲーム用途でも使える。
 
+== INSTALL:
+
+ gem install rask
+
+== INSTALL for Ruby On Rails Plugin:
+
+Rails のプラグインとしてインストールすると、
+バックグラウンドタスクジェネレータが利用できるようになります。
+
+ script/plugin install git://github.com/mewlist/Rask.git
+
+* タスクジェネレータ (generator)
+  * タスクは、lib/rask 以下に雛形が生成されます
+
+ script/generate rask test
+      create  lib/rask/
+      create  script/rask/
+      create  lib/rask/test_task.rb
+      create  script/rask/test_task.rb
+
+
+* タスク起動スクリプト
+
+ script/runner script/rask/test_task.rb start   # デーモンの起動
+ script/runner script/rask/test_task.rb restart # 再起動
+ script/runner script/rask/test_task.rb stop    # 停止
+
+Rails のフレームワークとコードを共通化したタスクの管理が行えるようになるので、
+ActiveRecord の構文が組み込めます。
+
+注意点としては、タスク内で使用しているモデルのコードが変更された場合は、
+タスクを再起動してください。
+
+
 == SYNOPSIS:
 
 * サンプルコード (samples/test.rb)
@@ -112,19 +146,19 @@ kill -TERM されたプロセスは、そのタスクのステートマシンの
  ruby1.8.7で作ってる
 
 == Changelog
-* v0.0.0
-  * 作ってみた
-* v0.0.1
-  * 方向性をはっきりさせた
-* v0.0.2
-  * グループ化、安全なプロセス中断処理追加
+* v0.0.4
+  * Integration for Ruby On Rails
+    * rails のジェネレータ化、プラグイン化コードの統合
 * v0.0.3
   * read メソッドで取得したインスタンスの実行制限処理
   * 英語ドキュメントの追加(/doc)
+* v0.0.0
+  * 作ってみた
+* v0.0.2
+  * グループ化、安全なプロセス中断処理追加
+* v0.0.1
+  * 方向性をはっきりさせた
 
-== INSTALL:
-
- gem install rask
 
 == LICENSE:
 
