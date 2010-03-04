@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'rask'
+Rask.base_directory = RAILS_ROOT+"/tmp/rask"
 
 # background task
 class <%=class_name%>Task < Rask::Task

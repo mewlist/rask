@@ -136,14 +136,17 @@ module Rask
   @@queue            = Queue.new
   @@processing       = []
   @@locker           = Mutex::new
-  @@process_name     = nil
   
   #
-  # === Set base storage directory
+  # === Set/Get base storage directory
   # default :: /tmp/rask
   #
   def self.base_directory=(new_directory)
     @@base_dir = new_directory
+  end
+  
+  def self.base_directory
+    @@base_dir
   end
   
   #
@@ -155,22 +158,14 @@ module Rask
   end
   
   #
-  # === Set process name manually
-  # default :: $0
-  #
-  def self.process_name=(name)
-    @@process_name = name
-  end
-  
-  #
   def self.task_path(task_id)
     @@base_dir+"/#{task_id}.task"
   end
   
   #
-  def self.pid_path
-    return @@base_dir+"/#{File.basename($0)}.pid" if @@process_name==nil
-    @@base_dir+"/#{@@process_name}.pid"
+  def self.pid_path(process_name = nil)
+    return @@base_dir+"/#{File.basename($0)}.pid" if process_name==nil
+    @@base_dir+"/#{process_name}.pid"
   end
   
   #
@@ -196,17 +191,25 @@ module Rask
     f = File.open(task_path(task_id), 'r+') rescue return
     f.flock(File::LOCK_EX)
     task = Marshal.restore(f)
-    if block_given?
-      yield task
-    else
-      task.run
+    begin
+      if block_given?
+        yield task
+      else
+        task.run
+      end
+      f.truncate(0)
+      f.pos = 0
+      Marshal.dump(task, f)
+      f.flock(File::LOCK_UN)
+      f.close
+      FileUtils.rm(task_path(task_id)) if task.destroy?
+    rescue
+      p $!
+      print $@.join("\n") + "\n--------------------------------------------\n"
+      f.flock(File::LOCK_UN)
+      f.close
+      FileUtils.mv(task_path(task_id), @@base_dir+"/suspended/")
     end
-    f.truncate(0)
-    f.pos = 0
-    Marshal.dump(task, f)
-    f.flock(File::LOCK_UN)
-    f.close
-    FileUtils.rm(task_path(task_id)) if task.destroy?
   end
   
   #
@@ -267,46 +270,26 @@ module Rask
   #   group :: Only the instance of specified group. see also Task::initialize.
   #   sleep :: Polling interval daemon process.
   #
-  def self.daemon(options = {:class=>nil, :group=>nil, :sleep=>0.1})
-    options = { :sleep=>0.1 }.merge(options)
+  def self.daemon(options = {:class=>nil, :group=>nil, :sleep=>0.1, :worker_sleep=>0.1, :process_name=>nil})
+    options = { :sleep=>0.1, :worker_sleep=>0.1, :process_name=>nil, :threading=>true }.merge(options)
     print "daemon start\n"
     exit if fork
     Process.setsid
     
     initialize_storage
-    if File.exist? pid_path
+    if File.exist? pid_path(options[:process_name])
       print "already running rask process. #{File.basename($0)}"
       return
     end
-    open(pid_path,"w"){|f| f.write Process.pid}
+    open(pid_path(options[:process_name]),"w"){|f| f.write Process.pid}
     
     # create worker threads
     threads = []
     for i in 1..@@thread_max_count do 
-      threads << Thread::new(i) { |thread_id|
-        @@thread_count += 1
-        while !@@terminated
-          d = nil
-          @@locker.synchronize do
-            d = @@queue.pop unless @@queue.empty?
-          end
-          if d != nil
-#            print "#{d}\n"
-            run(d)
-            @@locker.synchronize do
-              @@processing.delete(d)
-            end
-          else
-#            print "no data in queue\n"
-            sleep(options[:sleep])
-          end
-        end
-        print "#{thread_id}"
-        @@thread_count -= 1
-      }
+      threads << Thread::new(i) { |thread_id| thread_proc(thread_id, options[:worker_sleep]) }
     end
     
-    Signal.trap(:TERM) {safe_exit}
+    Signal.trap(:TERM) {safe_exit(options[:process_name])}
     
     while true
       task_list = Rask.task_ids(options)
@@ -323,12 +306,10 @@ module Rask
   end
   
 private
-  
   #
   def self.initialize_storage
-    unless File.exists? @@base_dir
-      FileUtils.makedirs @@base_dir
-    end
+    FileUtils.makedirs @@base_dir unless File.exists? @@base_dir
+    FileUtils.makedirs @@base_dir+"/suspended" unless File.exists? @@base_dir+"/suspended"
   end
   
   #
@@ -337,15 +318,37 @@ private
   end
   
   #
-  def self.safe_exit
+  def self.thread_proc(thread_id, worker_sleep = 0.1)
+    @@thread_count += 1
+    print "[Rask] Thread Start ID:#{thread_id}\n"
+    while !@@terminated
+      d = nil
+      @@locker.synchronize do
+        d = @@queue.pop unless @@queue.empty?
+      end
+      if d != nil
+        #print "task #{d}\n"
+        run(d)
+        @@locker.synchronize do
+          @@processing.delete(d)
+        end
+      else
+      # print "no data in queue\n"
+      end
+      sleep(worker_sleep)
+    end
+    print "[Rask] Thread Exit ID:#{thread_id}\n"
+    @@thread_count -= 1
+  end
+  #
+  def self.safe_exit(process_name)
     @@terminated = true
     while @@thread_count > 0
       sleep(0.1)
     end
-    FileUtils.rm(pid_path) if File.exist?(pid_path)
-    print "safely daemon terminated. \n"
+    FileUtils.rm(pid_path(process_name)) if File.exist?(pid_path(process_name))
+    print "[Rask]  safely daemon terminated. \n"
     exit
   end
   
 end
-
