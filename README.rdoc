@@ -145,6 +145,16 @@ kill -TERM されたプロセスは、そのタスクのステートマシンの
  ruby1.8.7で作ってる
 
 == Changelog
+* v0.0.6
+  * read が落ちるバグの修正
+  * タスク内で発生した例外コールバックの追加
+  * Task::on_exception will be called when some exception raised in Task Processing.
+* v0.0.5
+  * rails にて複数タスク実行可能に修正
+  * 例外をキャッチするようにした
+    * 落ちた場合はデフォルトで BASE_DIR/suspended/ フォルダにタスクファイルを移動するのでコード修正後戻せば復帰可能
+  * If exception raised, Rask delete the task and keep the task file to "BASE_DIR/suspended" directory.
+  * Rails generator is fixed.
 * v0.0.4
   * Integration for Ruby On Rails
     * rails のジェネレータ化、プラグイン化コードの統合

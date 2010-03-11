@@ -1,4 +1,7 @@
 === 0.0.5 2010-03-04
+* Task::on_exception will be called when some exception raised in Task Processing.
+
+=== 0.0.5 2010-03-04
 * If exception raised, Rask delete the task and keep the task file to "BASE_DIR/suspended" directory.
 * Rails generator is fixed.
 
