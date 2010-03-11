@@ -126,6 +126,10 @@ module Rask
       @state == nil
     end
     
+    def on_exception
+      Rask.suspend(@task_id) # default to suspend
+    end
+    
   end
   
   
@@ -208,7 +212,7 @@ module Rask
       print $@.join("\n") + "\n--------------------------------------------\n"
       f.flock(File::LOCK_UN)
       f.close
-      FileUtils.mv(task_path(task_id), @@base_dir+"/suspended/")
+      task.on_exception
     end
   end
   
@@ -227,8 +231,16 @@ module Rask
     task = Marshal.restore(f)
     f.flock(File::LOCK_UN)
     f.close
-    task.read_only = true
+    task.read_only
     task
+  end
+  
+  #
+  # === 
+  # if you met unrecovery error. you can suspend the task.
+  #
+  def self.suspend(task_id)
+    FileUtils.mv(task_path(task_id), @@base_dir+"/suspended/")
   end
   
   #
@@ -286,7 +298,7 @@ module Rask
     # create worker threads
     threads = []
     for i in 1..@@thread_max_count do 
-      threads << Thread::new(i) { |thread_id| thread_proc(thread_id, options[:worker_sleep]) }
+      threads << Thread::new(i) { |thread_id| thread_proc(thread_id, options) }
     end
     
     Signal.trap(:TERM) {safe_exit(options[:process_name])}
@@ -318,7 +330,7 @@ private
   end
   
   #
-  def self.thread_proc(thread_id, worker_sleep = 0.1)
+  def self.thread_proc(thread_id, options = {})
     @@thread_count += 1
     print "[Rask] Thread Start ID:#{thread_id}\n"
     while !@@terminated
@@ -332,10 +344,11 @@ private
         @@locker.synchronize do
           @@processing.delete(d)
         end
+        sleep(options[:worker_sleep])
       else
-      # print "no data in queue\n"
+        # print "no data in queue\n"
+        sleep(options[:sleep])
       end
-      sleep(worker_sleep)
     end
     print "[Rask] Thread Exit ID:#{thread_id}\n"
     @@thread_count -= 1
