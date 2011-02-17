@@ -3,6 +3,7 @@
 require File.expand_path(File.join('.', 'spec_helper'), File.dirname(__FILE__))
 require 'pp' # for lib/sample.rb
 require 'rask' # for lib/sample.rb
+require 'net/http'
 
 COUNT      = 100
 
@@ -17,7 +18,7 @@ module Test
     define_state :finish,  :from    => [:running]
     
     def start
-      print "Group[#{self.group}] get started. \n"
+      print "[TestTask] Group[#{self.group}] get started."
       transition_to_running
     end
     
@@ -28,7 +29,7 @@ module Test
     end
     
     def finish
-      print "Group[#{self.group}] finished. \n"
+      print "[TestTask] Group[#{self.group}] finished. \n"
       destroy
     end
   end
@@ -40,13 +41,13 @@ module Test
     define_state :finish,  :from    => [:running]
     
     def start
-      print "Group[#{self.group}] get started. \n"
+      print "[RasingTask] Group[#{self.group}] get started. \n"
       transition_to_running
     end
     
     def running
-      print "."
       transition_to_finish
+      puts "[RasingTask] raise!"
       raise 'Something wrong!!!!'
     end
     
@@ -55,7 +56,35 @@ module Test
       destroy
     end
   end
+
+  class HTTPTask < Rask::Task
+    
+    define_state :start,   :initial => true
+    define_state :running
+    define_state :finish,  :from    => [:running]
+    
+    def start
+      print "HTTP task get started \n"
+      transition_to_running
+    end
+    
+    def running
+      Net::HTTP.version_1_2   # おまじない
+      Net::HTTP.start('www.example.com', 80) {|http|
+        response = http.get('/index.html')
+        puts response.body
+      }
+      transition_to_finish
+    end
+    
+    def finish
+      print "Group[#{self.group}] finished. \n"
+      destroy
+    end
+  end
 end
+
+
 
 
 describe Rask, "When create" do
@@ -162,14 +191,15 @@ describe Rask, "When create" do
       p task_list
       task_list.each { |task_id|
         Rask.run(task_id) { |task|
-          task.run
-          File.exist?(Rask.base_directory+"/suspended/"+task_id.task).should == true
+          task.run # start
+          task.run # run
         }
+        File.exist?(Rask.base_directory+"/suspended/"+task_id+".task").should == true
       }
     end while task_list.length > 0
   end
   
   after(:each) do
-    FileUtils.rm_r Dir.glob(Rask.base_directory+'/*')
+#    FileUtils.rm_r Dir.glob(Rask.base_directory+'/*')
   end
 end
