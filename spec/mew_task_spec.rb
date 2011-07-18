@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
-require File.expand_path(File.join('.', 'spec_helper'), File.dirname(__FILE__))
+#coding: utf-8
+require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 require 'pp' # for lib/sample.rb
 require 'rask' # for lib/sample.rb
 require 'net/http'
